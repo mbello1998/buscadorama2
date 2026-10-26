@@ -384,6 +384,15 @@ main { max-width: 1240px; margin: 0 auto; padding: 35px 24px 70px; }
   font-weight: 900;
 }
 
+.tag-ar {
+  background: rgba(75, 85, 99, 0.9);
+  border: 1px solid rgba(156, 163, 175, 0.35);
+}
+.tag-ar::before {
+  content: "▤";
+  font-size: 0.7rem;
+}
+
 /* ---------- Painel de Status ---------- */
 .status-painel {
   display: flex;
@@ -433,6 +442,11 @@ main { max-width: 1240px; margin: 0 auto; padding: 35px 24px 70px; }
 .badge-result.dm {
   background: rgba(37, 99, 235, 0.15);
   border: 1px solid rgba(37, 99, 235, 0.3);
+}
+
+.badge-result.ar {
+  background: rgba(107, 114, 128, 0.15);
+  border: 1px solid rgba(156, 163, 175, 0.3);
 }
 
 /* ---------- Botões de Ação ---------- */

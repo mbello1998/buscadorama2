@@ -118,6 +118,9 @@ function criarCard(v, isHistorico = false) {
   if (v.plataforma === "dailymotion") {
     platLogo.className = "tag-plataforma tag-dm";
     platLogo.textContent = "Dailymotion";
+  } else if (v.plataforma === "archive") {
+    platLogo.className = "tag-plataforma tag-ar";
+    platLogo.textContent = "Internet Archive";
   } else {
     platLogo.className = "tag-plataforma tag-yt";
     platLogo.textContent = "YouTube";
@@ -170,7 +173,7 @@ function criarCard(v, isHistorico = false) {
 
   const c = document.createElement("div");
   c.className = "canal";
-  c.textContent = v.canal;
+  c.textContent = (v.canal || "") + (v.oficial ? " ✔ oficial" : "");
 
   info.appendChild(t);
   info.appendChild(c);
@@ -263,6 +266,74 @@ function carregarTop10() {
   carregarTopLista("anime", secaoTop10Anime, listaTop10Anime);
 }
 
+// ---------- Onde assistir legalmente (outras plataformas, via TMDB/JustWatch) ----------
+async function carregarOndeAssistir(titulo) {
+  let painel = document.getElementById("onde-assistir");
+  if (!painel) {
+    painel = document.createElement("div");
+    painel.id = "onde-assistir";
+    lista.parentNode.insertBefore(painel, lista);
+  }
+  painel.innerHTML = "";
+  painel.style.display = "none";
+
+  try {
+    const res = await fetch("/onde-assistir?titulo=" + encodeURIComponent(titulo));
+    const d = res.ok ? await res.json() : null;
+    if (!d || !Array.isArray(d.plataformas) || d.plataformas.length === 0) return;
+    if (ultimaBusca !== titulo) return; // a pessoa já fez outra busca
+
+    painel.style.cssText =
+      "display:block;margin:0 0 22px 0;padding:16px 18px;border-radius:16px;" +
+      "background:rgba(25,20,42,.7);border:1px solid rgba(124,58,237,.35);";
+
+    const h = document.createElement("div");
+    h.style.cssText = "font-weight:700;color:#c4b5fd;margin-bottom:12px;";
+    h.textContent = "📺 Onde assistir no Brasil — " + d.titulo;
+    painel.appendChild(h);
+
+    const grupos = {};
+    d.plataformas.forEach((p) => { (grupos[p.tipo] = grupos[p.tipo] || []).push(p); });
+
+    Object.keys(grupos).forEach((tipo) => {
+      const rotulo = document.createElement("div");
+      rotulo.style.cssText = "font-size:.8rem;color:#a09abc;margin:10px 0 6px;";
+      rotulo.textContent = tipo;
+      painel.appendChild(rotulo);
+
+      const linha = document.createElement("div");
+      linha.style.cssText = "display:flex;flex-wrap:wrap;gap:10px;";
+      grupos[tipo].forEach((p) => {
+        const a = document.createElement("a");
+        a.href = d.link || "#";
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.title = p.nome;
+        a.style.cssText =
+          "display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:12px;" +
+          "background:rgba(255,255,255,.06);color:#fff;text-decoration:none;font-size:.85rem;";
+        if (p.logo) {
+          const img = document.createElement("img");
+          img.src = p.logo;
+          img.alt = "";
+          img.style.cssText = "width:30px;height:30px;border-radius:8px;";
+          a.appendChild(img);
+        }
+        const nome = document.createElement("span");
+        nome.textContent = p.nome;
+        a.appendChild(nome);
+        linha.appendChild(a);
+      });
+      painel.appendChild(linha);
+    });
+
+    const fonte = document.createElement("div");
+    fonte.style.cssText = "font-size:.7rem;color:#7d77a0;margin-top:12px;";
+    fonte.textContent = "Disponibilidade: JustWatch, via TMDB. Pode variar com o tempo.";
+    painel.appendChild(fonte);
+  } catch (e) {}
+}
+
 // ---------- Renderização da Lista de Resultados ----------
 function renderizarLista(filtro) {
   lista.innerHTML = "";
@@ -298,16 +369,19 @@ async function buscar() {
   const titulo = campo.value.trim();
   if (!titulo) return;
   ultimaBusca = titulo;
+  carregarOndeAssistir(titulo);
 
   let qtdYT = 0;
   let qtdDM = 0;
+  let qtdAR = 0;
   let ytPronto = false;
   let dmPronto = false;
+  let arPronto = false;
   videosGlobais = [];
 
   function atualizarStatus() {
-    let icone = (ytPronto && dmPronto) ? '✅' : '<span class="spinner"></span>';
-    let texto = (ytPronto && dmPronto) ? 'Busca concluída' : 'A vasculhar os catálogos...';
+    let icone = (ytPronto && dmPronto && arPronto) ? '✅' : '<span class="spinner"></span>';
+    let texto = (ytPronto && dmPronto && arPronto) ? 'Busca concluída' : 'A vasculhar os catálogos...';
     
     statusEl.innerHTML = `
       <div class="status-painel">
@@ -317,6 +391,7 @@ async function buscar() {
         <div class="status-badges">
           <div class="badge-result yt"><span>▶</span> ${qtdYT} YouTube</div>
           <div class="badge-result dm"><span>d</span> ${qtdDM} Dailymotion</div>
+          <div class="badge-result ar"><span>▤</span> ${qtdAR} Archive</div>
         </div>
       </div>
     `;
@@ -368,7 +443,22 @@ async function buscar() {
     })
     .catch(() => { dmPronto = true; atualizarStatus(); });
 
-  await Promise.all([pYT, pDM]);
+  const pAR = fetch("/buscar/archive?titulo=" + encodeURIComponent(titulo))
+    .then(res => res.ok ? res.json() : [])
+    .then(data => {
+      if (Array.isArray(data)) {
+        qtdAR = data.length;
+        videosGlobais = videosGlobais.concat(data);
+        videosGlobais.sort((a, b) => b.pontos - a.pontos);
+      }
+      arPronto = true;
+      atualizarStatus();
+      if (videosGlobais.length > 0) renderizarLista("todos");
+      filtros.style.display = "flex";
+    })
+    .catch(() => { arPronto = true; atualizarStatus(); });
+
+  await Promise.all([pYT, pDM, pAR]);
 
   if (!videosGlobais.length) {
     statusEl.innerHTML = "Nenhum episódio encontrado ou erro de servidor. Tente outro nome.";
@@ -408,6 +498,8 @@ function tocar(v) {
   if (v.plataforma === "dailymotion") {
     src = `https://www.dailymotion.com/embed/video/${v.id}?autoplay=1`;
     if (progressoSalvo > 0) src += `&start=${Math.floor(progressoSalvo)}`;
+  } else if (v.plataforma === "archive") {
+    src = `https://archive.org/embed/${v.id}`;
   } else {
     src = `https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0&playsinline=1&hl=pt-BR&cc_lang_pref=pt&cc_load_policy=1`;
     if (progressoSalvo > 0) src += `&start=${Math.floor(progressoSalvo)}`;
@@ -547,6 +639,8 @@ if (campo) {
 const voltar = document.getElementById("voltar");
 if (voltar) {
   voltar.addEventListener("click", function () {
+    const painelOnde = document.getElementById("onde-assistir");
+    if (painelOnde) { painelOnde.innerHTML = ""; painelOnde.style.display = "none"; }
     lista.innerHTML = "";
     moldura.innerHTML = "";
     if (tela) tela.style.display = "none";

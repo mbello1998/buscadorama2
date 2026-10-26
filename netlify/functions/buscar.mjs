@@ -35,6 +35,13 @@ const CANAIS_BONS = [
   "dorama", "drama", "crunchyroll", "muse", "ani-one", "anime",
 ];
 
+// Canais e serviços oficiais: ganham destaque (✔) e mais pontos
+const CANAIS_OFICIAIS = [
+  "netflix", "viki", "kocowa", "iqiyi", "wetv", "kbs", "sbs", "mbc", "tvn",
+  "jtbc", "cj enm", "crunchyroll", "muse", "ani-one", "bilibili", "gmm",
+  "tv asahi", "nippon tv", "toei animation", "kadokawa",
+];
+
 const TIMEOUT_MS = 10000;
 
 const UA =
@@ -64,6 +71,12 @@ function normalizar(texto) {
   let t = (texto || "").normalize("NFKD").replace(/\p{M}/gu, "");
   t = t.toLowerCase().replace(/[^\p{L}\p{N}_\s]/gu, " ");
   return t.replace(/\s+/g, " ").trim();
+}
+
+// Compara por palavras inteiras (evita "ena" casar com "Lena", por exemplo).
+function ehOficial(canal) {
+  const c = " " + normalizar(canal) + " ";
+  return CANAIS_OFICIAIS.some((o) => c.includes(" " + normalizar(o) + " "));
 }
 
 function duracaoEmMinutos(iso) {
@@ -96,7 +109,8 @@ function pontuar(titulo, canal, minutos) {
   const c = canal.toLowerCase();
   let pontos = 1; // Ponto base se já passou pelos filtros de nome, duração e palavras ruins
   if (PALAVRAS_BOAS.some((p) => t.includes(p))) pontos += 3;
-  if (CANAIS_BONS.some((p) => c.includes(p))) pontos += 3;
+  if (ehOficial(canal)) pontos += 5;
+  else if (CANAIS_BONS.some((p) => c.includes(p))) pontos += 2;
   if (minutos >= 30) pontos += 3;
   else if (minutos >= 15) pontos += 2;
   return pontos;
@@ -222,6 +236,7 @@ async function buscarYoutubeWebFallback(termo, nomes, achados) {
             ? thumbs[thumbs.length - 1].url
             : `https://i.ytimg.com/vi/${vidId}/hqdefault.jpg`,
           pontos: pontuar(titulo, canal, minutos),
+          oficial: ehOficial(canal),
           plataforma: "youtube",
         });
       }
@@ -282,6 +297,7 @@ async function buscarYoutube(termos, nomes) {
           minutos: arredondar(minutos),
           miniatura: v.snippet.thumbnails?.medium?.url || `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
           pontos: pontuar(titulo, canal, minutos),
+          oficial: ehOficial(canal),
           plataforma: "youtube",
         });
       }
@@ -324,6 +340,7 @@ async function buscarDailymotion(termos, nomes) {
             minutos: arredondar(minutos),
             miniatura: v.thumbnail_720_url || "https://via.placeholder.com/640x360?text=Sem+Capa",
             pontos: pontuar(titulo, canal, minutos),
+          oficial: ehOficial(canal),
             plataforma: "dailymotion",
           });
         }
@@ -334,6 +351,68 @@ async function buscarDailymotion(termos, nomes) {
   );
 
   console.log(`✅ Dailymotion retornou ${achados.size} vídeos.`);
+  return [...achados.values()];
+}
+
+const AR_BUSCA = "https://archive.org/advancedsearch.php";
+
+function minutosArchive(runtime) {
+  if (!runtime) return 0;
+  const txt = String(Array.isArray(runtime) ? runtime[0] : runtime);
+  if (txt.includes(":")) return duracaoTextoEmMinutos(txt);
+  const n = parseFloat(txt);
+  return Number.isFinite(n) ? n : 0; // número solto = minutos
+}
+
+async function buscarArchive(nomes) {
+  const achados = new Map();
+  const nomesBusca = [
+    ...new Set(nomes.map((n) => n.replace(/["\\]/g, " ").trim()).filter((n) => n.length >= 2)),
+  ].slice(0, 4);
+  if (!nomesBusca.length) return [];
+
+  try {
+    const u = new URL(AR_BUSCA);
+    u.searchParams.set(
+      "q",
+      `(${nomesBusca.map((n) => `title:"${n}"`).join(" OR ")}) AND mediatype:movies`
+    );
+    for (const f of ["identifier", "title", "creator", "runtime"]) u.searchParams.append("fl[]", f);
+    u.searchParams.set("rows", "20");
+    u.searchParams.set("output", "json");
+    u.searchParams.set("sort[]", "downloads desc");
+
+    const r = await fetch(u, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { "User-Agent": UA, Accept: "application/json" },
+    });
+    const dados = await r.json();
+
+    for (const d of dados?.response?.docs || []) {
+      const titulo = String(Array.isArray(d.title) ? d.title[0] : d.title || "");
+      const canal = String(Array.isArray(d.creator) ? d.creator[0] : d.creator || "Internet Archive");
+      const minutos = minutosArchive(d.runtime);
+
+      // Sem duração informada (0) também é aceito: muitos itens do Archive não trazem esse dado.
+      if (minutos !== 0 && minutos < MINUTOS_MINIMOS) continue;
+      if (temPalavraRuim(titulo) || !tituloCombina(titulo, nomes)) continue;
+
+      achados.set(d.identifier, {
+        id: d.identifier,
+        titulo,
+        canal,
+        minutos: arredondar(minutos),
+        miniatura: `https://archive.org/services/img/${d.identifier}`,
+        pontos: pontuar(titulo, canal, minutos),
+        oficial: false,
+        plataforma: "archive",
+      });
+    }
+  } catch (e) {
+    console.log("⚠️ Falha na conexão com Internet Archive:", e);
+  }
+
+  console.log(`✅ Internet Archive retornou ${achados.size} vídeos.`);
   return [...achados.values()];
 }
 
@@ -361,15 +440,19 @@ export default async (req) => {
     videos = await buscarYoutube(termos, nomes);
   } else if (rota === "/buscar/dailymotion") {
     videos = await buscarDailymotion(termos, nomes);
+  } else if (rota === "/buscar/archive") {
+    videos = await buscarArchive(nomes);
   } else {
     // Rota unificada caso o app.js antigo seja usado
-    const [yt, dm] = await Promise.all([buscarYoutube(termos, nomes), buscarDailymotion(termos, nomes)]);
-    videos = [...yt, ...dm].sort((a, b) => b.pontos - a.pontos);
+    const [yt, dm, ar] = await Promise.all([
+      buscarYoutube(termos, nomes), buscarDailymotion(termos, nomes), buscarArchive(nomes),
+    ]);
+    videos = [...yt, ...dm, ...ar].sort((a, b) => b.pontos - a.pontos);
   }
 
   return Response.json(videos, { headers: { "Access-Control-Allow-Origin": "*" } });
 };
 
 export const config = {
-  path: ["/buscar", "/buscar/youtube", "/buscar/dailymotion"],
+  path: ["/buscar", "/buscar/youtube", "/buscar/dailymotion", "/buscar/archive"],
 };
