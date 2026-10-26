@@ -25,15 +25,17 @@ export default async (req) => {
     const r = await fetch(u, { signal: AbortSignal.timeout(8000) });
     const dados = await r.json();
 
-    const s = (dados.results || []).find(
-      (x) =>
-        (x.origin_country || []).some((p) => PAISES_DORAMA.has(p)) &&
-        !(x.genre_ids || []).includes(16) // ignora animação
-    );
+    const ehAnime = (x) =>
+      (x.genre_ids || []).includes(16) && (x.origin_country || []).includes("JP");
+    const ehDorama = (x) =>
+      (x.origin_country || []).some((p) => PAISES_DORAMA.has(p)) &&
+      !(x.genre_ids || []).includes(16);
+
+    const s = (dados.results || []).find((x) => ehAnime(x) || ehDorama(x));
     if (!s || !(s.backdrop_path || s.poster_path)) return Response.json({ ok: false });
 
     const store = getStore("doramas");
-    const chave = `d-${s.id}`;
+    const chave = `${ehAnime(s) ? "a" : "d"}-${s.id}`;
     const atual = (await store.get(chave, { type: "json" })) || {};
 
     await store.setJSON(chave, {

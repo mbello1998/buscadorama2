@@ -6,17 +6,23 @@ const TMDB_KEY = process.env.TMDB_KEY || "";
 // Cada visualização no site vale 3 pontos; o TMDB dá de 20 (1º) a 1 ponto (20º).
 const PONTOS_POR_VISTA = 3;
 
-async function doTmdb() {
+async function doTmdb(anime) {
   if (!TMDB_KEY) return [];
   try {
     const u = new URL("https://api.themoviedb.org/3/discover/tv");
     u.searchParams.set("api_key", TMDB_KEY);
     u.searchParams.set("language", "pt-BR");
     u.searchParams.set("sort_by", "popularity.desc");
-    u.searchParams.set("with_origin_country", "KR|CN|JP|TW|TH");
-    // tira animações, reality, talk shows, notícias e infantis
-    u.searchParams.set("without_genres", "16,10764,10767,10763,10762");
-    u.searchParams.set("vote_count.gte", "20");
+    if (anime) {
+      u.searchParams.set("with_origin_country", "JP");
+      u.searchParams.set("with_genres", "16"); // animação
+      u.searchParams.set("vote_count.gte", "50");
+    } else {
+      u.searchParams.set("with_origin_country", "KR|CN|JP|TW|TH");
+      // tira animações, reality, talk shows, notícias e infantis
+      u.searchParams.set("without_genres", "16,10764,10767,10763,10762");
+      u.searchParams.set("vote_count.gte", "20");
+    }
     const r = await fetch(u, { signal: AbortSignal.timeout(8000) });
     const dados = await r.json();
     return (dados.results || [])
@@ -36,10 +42,10 @@ async function doTmdb() {
   }
 }
 
-async function doSite() {
+async function doSite(anime) {
   try {
     const store = getStore("doramas");
-    const { blobs } = await store.list({ prefix: "d-" });
+    const { blobs } = await store.list({ prefix: anime ? "a-" : "d-" });
     const itens = await Promise.all(
       blobs.slice(0, 200).map((b) => store.get(b.key, { type: "json" }).catch(() => null))
     );
@@ -50,8 +56,9 @@ async function doSite() {
   }
 }
 
-export default async () => {
-  const [tmdb, site] = await Promise.all([doTmdb(), doSite()]);
+export default async (req) => {
+  const anime = new URL(req.url).searchParams.get("tipo") === "anime";
+  const [tmdb, site] = await Promise.all([doTmdb(anime), doSite(anime)]);
 
   const mapa = new Map();
   tmdb.slice(0, 20).forEach((d, i) => {

@@ -12,6 +12,8 @@ const secaoRetomar = document.getElementById("secao-retomar");
 const listaRetomar = document.getElementById("lista-retomar");
 const secaoTop10 = document.getElementById("secao-top10");
 const listaTop10 = document.getElementById("lista-top10");
+const secaoTop10Anime = document.getElementById("secao-top10-anime");
+const listaTop10Anime = document.getElementById("lista-top10-anime");
 
 let videosGlobais = [];
 let ultimaBusca = "";
@@ -203,17 +205,17 @@ function carregarContinuarAssistindo() {
   secaoRetomar.style.display = "block";
 }
 
-// ---------- Top 10 doramas mais populares (TMDB) ----------
-async function carregarTop10() {
-  if (!secaoTop10 || !listaTop10) return;
+// ---------- Top 10 (doramas e animes): TMDB + o que os visitantes assistem ----------
+async function carregarTopLista(tipo, secao, listaEl) {
+  if (!secao || !listaEl) return;
   try {
-    const res = await fetch("/top10");
+    const res = await fetch("/top10?tipo=" + tipo);
     const dados = res.ok ? await res.json() : [];
     if (!Array.isArray(dados) || dados.length === 0) {
-      secaoTop10.style.display = "none";
+      secao.style.display = "none";
       return;
     }
-    listaTop10.innerHTML = "";
+    listaEl.innerHTML = "";
     dados.forEach((d, i) => {
       const card = document.createElement("div");
       card.className = "card";
@@ -248,12 +250,17 @@ async function carregarTop10() {
         window.scrollTo({ top: 0, behavior: "smooth" });
         buscar();
       });
-      listaTop10.appendChild(card);
+      listaEl.appendChild(card);
     });
-    secaoTop10.style.display = "block";
+    secao.style.display = "block";
   } catch (e) {
-    secaoTop10.style.display = "none";
+    secao.style.display = "none";
   }
+}
+
+function carregarTop10() {
+  carregarTopLista("dorama", secaoTop10, listaTop10);
+  carregarTopLista("anime", secaoTop10Anime, listaTop10Anime);
 }
 
 // ---------- Renderização da Lista de Resultados ----------
@@ -323,6 +330,7 @@ async function buscar() {
   filtros.style.display = "none";
   if (secaoRetomar) secaoRetomar.style.display = "none";
   if (secaoTop10) secaoTop10.style.display = "none";
+  if (secaoTop10Anime) secaoTop10Anime.style.display = "none";
 
   for (let i = 0; i < 6; i++) {
     const e = document.createElement("div");
@@ -548,6 +556,7 @@ if (voltar) {
     if (filtros) filtros.style.display = "none";
     if (secaoRetomar) secaoRetomar.style.display = "block";
     if (secaoTop10 && listaTop10 && listaTop10.children.length) secaoTop10.style.display = "block";
+    if (secaoTop10Anime && listaTop10Anime && listaTop10Anime.children.length) secaoTop10Anime.style.display = "block";
     window.scrollTo({ top: 0, behavior: "smooth" });
     if (campo) campo.focus();
   });

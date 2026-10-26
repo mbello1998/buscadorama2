@@ -26,13 +26,13 @@ const PALAVRAS_BOAS = [
   "ep", "episode", "episódio", "episodio", "capítulo", "capitulo",
   "full", "completo", "eng sub", "legendado", "sub indo", "dorama",
   "drama", "kdrama", "k-drama", "cdrama", "jdrama",
-  "dublado", "pt-br", "português", "portugues",
+  "dublado", "pt-br", "português", "portugues", "anime",
 ];
 
 const CANAIS_BONS = [
   "netflix", "viki", "kocowa", "iqiyi", "wetv", "kbs", "sbs", "mbc",
   "tvn", "jtbc", "ena", "cj enm", "asian drama", "kdrama", "k-drama",
-  "dorama", "drama",
+  "dorama", "drama", "crunchyroll", "muse", "ani-one", "anime",
 ];
 
 const TIMEOUT_MS = 10000;
