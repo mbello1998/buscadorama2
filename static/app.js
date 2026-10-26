@@ -328,17 +328,35 @@ function tocar(v) {
     }
   }
 
-  const iframe = document.createElement("iframe");
-  iframe.src = src;
-  iframe.title = v.titulo || "Vídeo";
-  iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen; presentation; remote-playback";
-  iframe.allowFullscreen = true;
-  
-  iframe.referrerPolicy = "strict-origin-when-cross-origin";
-
   moldura.innerHTML = "";
-  moldura.appendChild(iframe);
-  
+  if (v.plataforma === "dailymotion") {
+    // Dailymotion bloqueia a incorporação: mostra capa e abre o vídeo em outra aba
+    const link = `https://www.dailymotion.com/video/${v.id}`;
+    const caixa = document.createElement("a");
+    caixa.href = link;
+    caixa.target = "_blank";
+    caixa.rel = "noopener";
+    caixa.style.cssText =
+      "position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;" +
+      "text-decoration:none;color:#fff;text-align:center;padding:20px;" +
+      (v.miniatura
+        ? `background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.75)),url('${v.miniatura}') center/cover;`
+        : "background:#141414;");
+    caixa.innerHTML =
+      '<div style="font-size:3rem;line-height:1">▶</div>' +
+      '<div style="font-weight:bold;font-size:1.1rem">Assistir no Dailymotion</div>' +
+      '<div style="font-size:.85rem;opacity:.8">O vídeo abre em outra aba</div>';
+    moldura.appendChild(caixa);
+  } else {
+    const iframe = document.createElement("iframe");
+    iframe.src = src;
+    iframe.title = v.titulo || "Vídeo";
+    iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen; presentation; remote-playback";
+    iframe.allowFullscreen = true;
+    iframe.referrerPolicy = "strict-origin-when-cross-origin";
+    moldura.appendChild(iframe);
+  }
+
   const favoritos = obterFavoritos();
   const ehFavorito = favoritos.includes(v.id);
 
@@ -352,13 +370,8 @@ function tocar(v) {
   }
 
   if (telaCanal) {
-    const linkOriginal = v.plataforma === "dailymotion"
-      ? `https://www.dailymotion.com/video/${v.id}`
-      : `https://www.youtube.com/watch?v=${v.id}`;
-    const nomePlat = v.plataforma === "dailymotion" ? "Dailymotion" : "YouTube";
     telaCanal.innerHTML = `
       ${v.canal} 
-      <a href="${linkOriginal}" target="_blank" rel="noopener" style="margin-left: 10px; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.25); color: #fff; border-radius: 20px; font-size: 0.8rem; text-decoration: none;">↗ Abrir no ${nomePlat}</a>
       <button id="btn-similares" style="margin-left: 10px; padding: 6px 14px; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border: none; color: white; border-radius: 20px; cursor: pointer; font-size: 0.8rem; font-weight: bold; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);">
         🔍 Episódios Parecidos
       </button>
