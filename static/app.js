@@ -321,7 +321,7 @@ function tocar(v) {
     src = `https://www.dailymotion.com/embed/video/${v.id}?autoplay=1`;
     if (progressoSalvo > 0) src += `&start=${Math.floor(progressoSalvo)}`;
   } else {
-    src = `https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0&playsinline=1`;
+    src = `https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0&playsinline=1&hl=pt-BR&cc_lang_pref=pt&cc_load_policy=1`;
     if (progressoSalvo > 0) src += `&start=${Math.floor(progressoSalvo)}`;
     if (location.origin && location.origin !== "null") {
       src += "&origin=" + encodeURIComponent(location.origin);

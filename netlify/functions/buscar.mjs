@@ -26,6 +26,7 @@ const PALAVRAS_BOAS = [
   "ep", "episode", "episódio", "episodio", "capítulo", "capitulo",
   "full", "completo", "eng sub", "legendado", "sub indo", "dorama",
   "drama", "kdrama", "k-drama", "cdrama", "jdrama",
+  "dublado", "pt-br", "português", "portugues",
 ];
 
 const CANAIS_BONS = [
@@ -164,7 +165,7 @@ async function prepararTermos(titulo) {
     `${nomeDorama} episode 1`,
     `${nomeDorama} legendado`,
     `${nomeDorama} eng sub`,
-    `${nomeDorama} ep 1`,
+    `${nomeDorama} dublado pt-br`,
   ];
   const resultado = { termos: termosBusca, nomes: nomesAlternativos };
   if (cacheTermos.size >= 100) cacheTermos.delete(cacheTermos.keys().next().value);
@@ -248,6 +249,8 @@ async function buscarYoutube(termos, nomes) {
         videoEmbeddable: "true",
         key: YOUTUBE_KEY,
         maxResults: 15,
+        relevanceLanguage: "pt",
+        regionCode: "BR",
       });
       if (dados.error) {
         console.log("⚠️ Aviso API YouTube (usando modo alternativo):", dados.error.message);
