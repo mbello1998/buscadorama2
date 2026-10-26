@@ -318,8 +318,8 @@ function tocar(v) {
   const progressoSalvo = historico[v.id] ? historico[v.id].tempo : 0;
 
   if (v.plataforma === "dailymotion") {
-    src = `https://geo.dailymotion.com/player.html?video=${v.id}`;
-    if (progressoSalvo > 0) src += `&startTime=${Math.floor(progressoSalvo)}`;
+    src = `https://www.dailymotion.com/embed/video/${v.id}?autoplay=1`;
+    if (progressoSalvo > 0) src += `&start=${Math.floor(progressoSalvo)}`;
   } else {
     src = `https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0&playsinline=1`;
     if (progressoSalvo > 0) src += `&start=${Math.floor(progressoSalvo)}`;
@@ -352,8 +352,13 @@ function tocar(v) {
   }
 
   if (telaCanal) {
+    const linkOriginal = v.plataforma === "dailymotion"
+      ? `https://www.dailymotion.com/video/${v.id}`
+      : `https://www.youtube.com/watch?v=${v.id}`;
+    const nomePlat = v.plataforma === "dailymotion" ? "Dailymotion" : "YouTube";
     telaCanal.innerHTML = `
       ${v.canal} 
+      <a href="${linkOriginal}" target="_blank" rel="noopener" style="margin-left: 10px; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.25); color: #fff; border-radius: 20px; font-size: 0.8rem; text-decoration: none;">↗ Abrir no ${nomePlat}</a>
       <button id="btn-similares" style="margin-left: 10px; padding: 6px 14px; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border: none; color: white; border-radius: 20px; cursor: pointer; font-size: 0.8rem; font-weight: bold; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);">
         🔍 Episódios Parecidos
       </button>
