@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DoramaStream — Catálogo Profissional</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+</head>
+<body>
+
+  <!-- Banner / Cabeçalho Cinematográfico -->
+  <header class="capa">
+    <!-- Efeito de Flores de Cerejeira Atmosféricas -->
+    <svg class="flores" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <g id="flor">
+          <ellipse cx="0" cy="-14" rx="9" ry="14" fill="#ffc2da"/>
+          <ellipse cx="0" cy="-14" rx="9" ry="14" fill="#ffc2da" transform="rotate(72)"/>
+          <ellipse cx="0" cy="-14" rx="9" ry="14" fill="#ffc2da" transform="rotate(144)"/>
+          <ellipse cx="0" cy="-14" rx="9" ry="14" fill="#ffc2da" transform="rotate(216)"/>
+          <ellipse cx="0" cy="-14" rx="9" ry="14" fill="#ffc2da" transform="rotate(288)"/>
+          <circle r="4" fill="#ec4899"/>
+        </g>
+      </defs>
+
+      <g opacity="0.45">
+        <use href="#flor" transform="translate(70 60) scale(1.6) rotate(15)"/>
+        <use href="#flor" transform="translate(190 150) scale(0.9) rotate(40)"/>
+        <use href="#flor" transform="translate(120 290) scale(1.3) rotate(-20)"/>
+        <use href="#flor" transform="translate(300 40) scale(0.7) rotate(60)"/>
+        <use href="#flor" transform="translate(1130 70) scale(1.7) rotate(-10)"/>
+        <use href="#flor" transform="translate(1020 170) scale(1) rotate(30)"/>
+        <use href="#flor" transform="translate(1100 320) scale(1.2) rotate(50)"/>
+        <use href="#flor" transform="translate(900 40) scale(0.8) rotate(-35)"/>
+        <use href="#flor" transform="translate(410 330) scale(0.6) rotate(10)"/>
+        <use href="#flor" transform="translate(800 350) scale(0.7) rotate(25)"/>
+      </g>
+    </svg>
+
+    <div class="conteudo">
+      <!-- Claquete de Cinema Estilizada -->
+      <svg class="claquete" viewBox="0 0 100 90" aria-hidden="true">
+        <defs>
+          <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#7c3aed"/>
+            <stop offset="1" stop-color="#db2777"/>
+          </linearGradient>
+        </defs>
+        <rect x="6" y="36" width="88" height="48" rx="6" fill="#13101f" stroke="url(#grad)" stroke-width="3"/>
+        <g transform="rotate(-12 8 30)">
+          <rect x="6" y="14" width="88" height="20" rx="4" fill="url(#grad)"/>
+          <polygon points="18,14 30,14 22,34 10,34" fill="#09070f"/>
+          <polygon points="42,14 54,14 46,34 34,34" fill="#09070f"/>
+          <polygon points="66,14 78,14 70,34 58,34" fill="#09070f"/>
+        </g>
+        <polygon points="42,50 42,72 62,61" fill="url(#grad)"/>
+      </svg>
+
+      <h1>DoramaStream</h1>
+      <p class="sub">Explore os melhores doramas legendados em alta qualidade com player integrado</p>
+
+      <!-- Barra de Pesquisa -->
+      <div class="busca">
+        <input id="campo" type="text" placeholder="Pesquisar dorama (ex: Crash Landing on You)..." autocomplete="off">
+        <button id="botao">Pesquisar</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main>
+    <!-- Botão Voltar (Aparece ao reproduzir ou filtrar) -->
+    <button id="voltar" class="voltar">← Voltar à página inicial</button>
+
+    <!-- Player de Vídeo -->
+    <section id="tela">
+      <div class="moldura" id="moldura"></div>
+      <h2 id="tela-titulo"></h2>
+      <p id="tela-canal"></p>
+    </section>
+
+    <!-- Painel de Status em Tempo Real -->
+    <div id="status" class="status-container"></div>
+    
+    <!-- Filtros de Plataforma e Favoritos -->
+    <div id="filtros" class="filtros" style="display: none;">
+      <button class="btn-filtro ativo" data-plataforma="todos">Todos</button>
+      <button class="btn-filtro" data-plataforma="youtube">YouTube</button>
+      <button class="btn-filtro" data-plataforma="dailymotion">Dailymotion</button>
+      <button class="btn-filtro" data-plataforma="favoritos">★ Vistos / Favoritos</button>
+    </div>
+
+    <!-- SECÇÃO: Top 10 Doramas Mais Vistos (Horizontal) -->
+    <div id="secao-top10" class="secao-top10" style="display: none;">
+      <h2>🔥 Top 10 Mais Vistos</h2>
+      <div id="lista-top10" class="cards-continuar"></div>
+    </div>
+
+    <!-- SECÇÃO: Continuar a Assistir (Horizontal) -->
+    <div id="secao-retomar" class="secao-continuar" style="display: none;">
+      <h2>▶ Continuar a Assistir</h2>
+      <div id="lista-retomar" class="cards-continuar"></div>
+    </div>
+
+    <!-- Grelha de Resultados da Pesquisa -->
+    <div id="lista" class="lista"></div>
+  </main>
+
+  <!-- Script JavaScript -->
+  <script src="/static/app.js"></script>
+</body>
+</html>
