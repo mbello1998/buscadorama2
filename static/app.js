@@ -10,8 +10,11 @@ const filtros = document.getElementById("filtros");
 const btnFiltros = document.querySelectorAll(".btn-filtro");
 const secaoRetomar = document.getElementById("secao-retomar");
 const listaRetomar = document.getElementById("lista-retomar");
+const secaoTop10 = document.getElementById("secao-top10");
+const listaTop10 = document.getElementById("lista-top10");
 
 let videosGlobais = [];
+let ultimaBusca = "";
 
 // ---------- Gestão do LocalStorage (Histórico e Favoritos) ----------
 function obterHistorico() {
@@ -200,6 +203,59 @@ function carregarContinuarAssistindo() {
   secaoRetomar.style.display = "block";
 }
 
+// ---------- Top 10 doramas mais populares (TMDB) ----------
+async function carregarTop10() {
+  if (!secaoTop10 || !listaTop10) return;
+  try {
+    const res = await fetch("/top10");
+    const dados = res.ok ? await res.json() : [];
+    if (!Array.isArray(dados) || dados.length === 0) {
+      secaoTop10.style.display = "none";
+      return;
+    }
+    listaTop10.innerHTML = "";
+    dados.forEach((d, i) => {
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const thumb = document.createElement("div");
+      thumb.className = "thumb";
+      const img = document.createElement("img");
+      img.src = d.imagem;
+      img.alt = d.titulo;
+      img.loading = "lazy";
+      const badge = document.createElement("div");
+      badge.className = "badge-ranking";
+      badge.textContent = i + 1;
+      thumb.appendChild(img);
+      thumb.appendChild(badge);
+
+      const info = document.createElement("div");
+      info.className = "info";
+      const t = document.createElement("div");
+      t.className = "titulo";
+      t.textContent = d.titulo;
+      const c = document.createElement("div");
+      c.className = "canal";
+      c.textContent = [d.ano, d.nota ? "★ " + d.nota : "", d.vistas ? d.vistas + " no site" : ""].filter(Boolean).join(" • ");
+      info.appendChild(t);
+      info.appendChild(c);
+
+      card.appendChild(thumb);
+      card.appendChild(info);
+      card.addEventListener("click", function () {
+        if (campo) campo.value = d.titulo;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        buscar();
+      });
+      listaTop10.appendChild(card);
+    });
+    secaoTop10.style.display = "block";
+  } catch (e) {
+    secaoTop10.style.display = "none";
+  }
+}
+
 // ---------- Renderização da Lista de Resultados ----------
 function renderizarLista(filtro) {
   lista.innerHTML = "";
@@ -234,6 +290,7 @@ btnFiltros.forEach(btn => {
 async function buscar() {
   const titulo = campo.value.trim();
   if (!titulo) return;
+  ultimaBusca = titulo;
 
   let qtdYT = 0;
   let qtdDM = 0;
@@ -265,6 +322,7 @@ async function buscar() {
   lista.innerHTML = "";
   filtros.style.display = "none";
   if (secaoRetomar) secaoRetomar.style.display = "none";
+  if (secaoTop10) secaoTop10.style.display = "none";
 
   for (let i = 0; i < 6; i++) {
     const e = document.createElement("div");
@@ -312,8 +370,30 @@ async function buscar() {
 }
 
 // ---------- Reprodutor (Player) ----------
+// Avisa o servidor que alguém assistiu a este dorama (no máximo 1 vez por dia por navegador)
+function registrarVisualizacao(termo) {
+  const t = (termo || "").trim();
+  if (t.length < 2) return;
+  try {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const reg = JSON.parse(localStorage.getItem("doramas_registrados") || "{}");
+    const chave = t.toLowerCase();
+    if (reg[chave] === hoje) return;
+    for (const c of Object.keys(reg)) if (reg[c] !== hoje) delete reg[c];
+    reg[chave] = hoje;
+    localStorage.setItem("doramas_registrados", JSON.stringify(reg));
+    fetch("/registrar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titulo: t }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch (e) {}
+}
+
 function tocar(v) {
   let src = "";
+  registrarVisualizacao(ultimaBusca);
   const historico = obterHistorico();
   const progressoSalvo = historico[v.id] ? historico[v.id].tempo : 0;
 
@@ -467,6 +547,7 @@ if (voltar) {
     voltar.style.display = "none";
     if (filtros) filtros.style.display = "none";
     if (secaoRetomar) secaoRetomar.style.display = "block";
+    if (secaoTop10 && listaTop10 && listaTop10.children.length) secaoTop10.style.display = "block";
     window.scrollTo({ top: 0, behavior: "smooth" });
     if (campo) campo.focus();
   });
@@ -483,3 +564,4 @@ if (campo && voltar) {
 
 // Inicialização ao carregar a página
 carregarContinuarAssistindo();
+carregarTop10();
