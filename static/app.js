@@ -118,6 +118,9 @@ function criarCard(v, isHistorico = false) {
   if (v.plataforma === "dailymotion") {
     platLogo.className = "tag-plataforma tag-dm";
     platLogo.textContent = "Dailymotion";
+  } else if (v.plataforma === "vimeo") {
+    platLogo.className = "tag-plataforma tag-vm";
+    platLogo.textContent = "Vimeo";
   } else if (v.plataforma === "archive") {
     platLogo.className = "tag-plataforma tag-ar";
     platLogo.textContent = "Internet Archive";
@@ -266,7 +269,7 @@ function carregarTop10() {
   carregarTopLista("anime", secaoTop10Anime, listaTop10Anime);
 }
 
-// ---------- Onde assistir legalmente (outras plataformas, via TMDB/JustWatch) ----------
+// ---------- Onde assistir legalmente (via TMDB/JustWatch) + busca nas plataformas ----------
 async function carregarOndeAssistir(titulo) {
   let painel = document.getElementById("onde-assistir");
   if (!painel) {
@@ -277,61 +280,97 @@ async function carregarOndeAssistir(titulo) {
   painel.innerHTML = "";
   painel.style.display = "none";
 
+  let d = null;
   try {
     const res = await fetch("/onde-assistir?titulo=" + encodeURIComponent(titulo));
-    const d = res.ok ? await res.json() : null;
-    if (!d || !Array.isArray(d.plataformas) || d.plataformas.length === 0) return;
-    if (ultimaBusca !== titulo) return; // a pessoa já fez outra busca
+    d = res.ok ? await res.json() : null;
+  } catch (e) {}
+  if (ultimaBusca !== titulo) return; // a pessoa já fez outra busca
 
-    painel.style.cssText =
-      "display:block;margin:0 0 22px 0;padding:16px 18px;border-radius:16px;" +
-      "background:rgba(25,20,42,.7);border:1px solid rgba(124,58,237,.35);";
+  const plataformas = d && Array.isArray(d.plataformas) ? d.plataformas : [];
+  const nome = (d && d.titulo) || titulo;
+  const q = encodeURIComponent(nome);
 
-    const h = document.createElement("div");
-    h.style.cssText = "font-weight:700;color:#c4b5fd;margin-bottom:12px;";
-    h.textContent = "📺 Onde assistir no Brasil — " + d.titulo;
-    painel.appendChild(h);
+  painel.style.cssText =
+    "display:block;margin:0 0 22px 0;padding:16px 18px;border-radius:16px;" +
+    "background:rgba(25,20,42,.7);border:1px solid rgba(124,58,237,.35);";
 
-    const grupos = {};
-    d.plataformas.forEach((p) => { (grupos[p.tipo] = grupos[p.tipo] || []).push(p); });
+  const h = document.createElement("div");
+  h.style.cssText = "font-weight:700;color:#c4b5fd;margin-bottom:12px;";
+  h.textContent = plataformas.length
+    ? "📺 Onde assistir no Brasil — " + nome
+    : "🔎 Procurar também nas plataformas — " + nome;
+  painel.appendChild(h);
 
-    Object.keys(grupos).forEach((tipo) => {
-      const rotulo = document.createElement("div");
-      rotulo.style.cssText = "font-size:.8rem;color:#a09abc;margin:10px 0 6px;";
-      rotulo.textContent = tipo;
-      painel.appendChild(rotulo);
+  const grupos = {};
+  plataformas.forEach((p) => { (grupos[p.tipo] = grupos[p.tipo] || []).push(p); });
 
-      const linha = document.createElement("div");
-      linha.style.cssText = "display:flex;flex-wrap:wrap;gap:10px;";
-      grupos[tipo].forEach((p) => {
-        const a = document.createElement("a");
-        a.href = d.link || "#";
-        a.target = "_blank";
-        a.rel = "noopener";
-        a.title = p.nome;
-        a.style.cssText =
-          "display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:12px;" +
-          "background:rgba(255,255,255,.06);color:#fff;text-decoration:none;font-size:.85rem;";
-        if (p.logo) {
-          const img = document.createElement("img");
-          img.src = p.logo;
-          img.alt = "";
-          img.style.cssText = "width:30px;height:30px;border-radius:8px;";
-          a.appendChild(img);
-        }
-        const nome = document.createElement("span");
-        nome.textContent = p.nome;
-        a.appendChild(nome);
-        linha.appendChild(a);
-      });
-      painel.appendChild(linha);
+  Object.keys(grupos).forEach((tipo) => {
+    const rotulo = document.createElement("div");
+    rotulo.style.cssText = "font-size:.8rem;color:#a09abc;margin:10px 0 6px;";
+    rotulo.textContent = tipo;
+    painel.appendChild(rotulo);
+
+    const linha = document.createElement("div");
+    linha.style.cssText = "display:flex;flex-wrap:wrap;gap:10px;";
+    grupos[tipo].forEach((p) => {
+      const a = document.createElement("a");
+      a.href = (d && d.link) || "#";
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.title = p.nome;
+      a.style.cssText =
+        "display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:12px;" +
+        "background:rgba(255,255,255,.06);color:#fff;text-decoration:none;font-size:.85rem;";
+      if (p.logo) {
+        const img = document.createElement("img");
+        img.src = p.logo;
+        img.alt = "";
+        img.style.cssText = "width:30px;height:30px;border-radius:8px;";
+        a.appendChild(img);
+      }
+      const n = document.createElement("span");
+      n.textContent = p.nome;
+      a.appendChild(n);
+      linha.appendChild(a);
     });
+    painel.appendChild(linha);
+  });
 
+  // Atalhos: abrem a busca já preenchida em plataformas oficiais (várias com opção gratuita)
+  const rotuloBusca = document.createElement("div");
+  rotuloBusca.style.cssText = "font-size:.8rem;color:#a09abc;margin:14px 0 6px;";
+  rotuloBusca.textContent = "Buscar direto em:";
+  painel.appendChild(rotuloBusca);
+
+  const atalhos = [
+    ["Viki", "https://www.viki.com/search?q=" + q],
+    ["Tubi", "https://tubitv.com/search/" + q],
+    ["Crunchyroll", "https://www.crunchyroll.com/search?q=" + q],
+    ["iQIYI", "https://www.iq.com/search?query=" + q],
+    ["Pluto TV", "https://www.google.com/search?q=" + q + "+site%3Apluto.tv"],
+  ];
+  const linhaBusca = document.createElement("div");
+  linhaBusca.style.cssText = "display:flex;flex-wrap:wrap;gap:10px;";
+  atalhos.forEach(([rot, url]) => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = rot + " ↗";
+    a.style.cssText =
+      "padding:7px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.25);" +
+      "color:#fff;text-decoration:none;font-size:.85rem;";
+    linhaBusca.appendChild(a);
+  });
+  painel.appendChild(linhaBusca);
+
+  if (plataformas.length) {
     const fonte = document.createElement("div");
     fonte.style.cssText = "font-size:.7rem;color:#7d77a0;margin-top:12px;";
     fonte.textContent = "Disponibilidade: JustWatch, via TMDB. Pode variar com o tempo.";
     painel.appendChild(fonte);
-  } catch (e) {}
+  }
 }
 
 // ---------- Renderização da Lista de Resultados ----------
@@ -374,14 +413,16 @@ async function buscar() {
   let qtdYT = 0;
   let qtdDM = 0;
   let qtdAR = 0;
+  let qtdVM = 0;
   let ytPronto = false;
   let dmPronto = false;
   let arPronto = false;
+  let vmPronto = false;
   videosGlobais = [];
 
   function atualizarStatus() {
-    let icone = (ytPronto && dmPronto && arPronto) ? '✅' : '<span class="spinner"></span>';
-    let texto = (ytPronto && dmPronto && arPronto) ? 'Busca concluída' : 'A vasculhar os catálogos...';
+    let icone = (ytPronto && dmPronto && arPronto && vmPronto) ? '✅' : '<span class="spinner"></span>';
+    let texto = (ytPronto && dmPronto && arPronto && vmPronto) ? 'Busca concluída' : 'A vasculhar os catálogos...';
     
     statusEl.innerHTML = `
       <div class="status-painel">
@@ -392,6 +433,7 @@ async function buscar() {
           <div class="badge-result yt"><span>▶</span> ${qtdYT} YouTube</div>
           <div class="badge-result dm"><span>d</span> ${qtdDM} Dailymotion</div>
           <div class="badge-result ar"><span>▤</span> ${qtdAR} Archive</div>
+          <div class="badge-result vm"><span>v</span> ${qtdVM} Vimeo</div>
         </div>
       </div>
     `;
@@ -458,7 +500,22 @@ async function buscar() {
     })
     .catch(() => { arPronto = true; atualizarStatus(); });
 
-  await Promise.all([pYT, pDM, pAR]);
+  const pVM = fetch("/buscar/vimeo?titulo=" + encodeURIComponent(titulo))
+    .then(res => res.ok ? res.json() : [])
+    .then(data => {
+      if (Array.isArray(data)) {
+        qtdVM = data.length;
+        videosGlobais = videosGlobais.concat(data);
+        videosGlobais.sort((a, b) => b.pontos - a.pontos);
+      }
+      vmPronto = true;
+      atualizarStatus();
+      if (videosGlobais.length > 0) renderizarLista("todos");
+      filtros.style.display = "flex";
+    })
+    .catch(() => { vmPronto = true; atualizarStatus(); });
+
+  await Promise.all([pYT, pDM, pAR, pVM]);
 
   if (!videosGlobais.length) {
     statusEl.innerHTML = "Nenhum episódio encontrado ou erro de servidor. Tente outro nome.";
@@ -498,6 +555,8 @@ function tocar(v) {
   if (v.plataforma === "dailymotion") {
     src = `https://www.dailymotion.com/embed/video/${v.id}?autoplay=1`;
     if (progressoSalvo > 0) src += `&start=${Math.floor(progressoSalvo)}`;
+  } else if (v.plataforma === "vimeo") {
+    src = `https://player.vimeo.com/video/${v.id}?autoplay=1`;
   } else if (v.plataforma === "archive") {
     src = `https://archive.org/embed/${v.id}`;
   } else {

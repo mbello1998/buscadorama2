@@ -40,6 +40,10 @@ const CANAIS_OFICIAIS = [
   "netflix", "viki", "kocowa", "iqiyi", "wetv", "kbs", "sbs", "mbc", "tvn",
   "jtbc", "cj enm", "crunchyroll", "muse", "ani-one", "bilibili", "gmm",
   "tv asahi", "nippon tv", "toei animation", "kadokawa",
+  "viu", "youku", "mango tv", "hunan tv", "tencent video", "channel 3",
+  "workpoint", "one31", "tv tokyo", "tbs", "nhk", "fuji tv", "aniplus",
+  "medialink", "anime onegai", "aniplex", "toho animation", "pony canyon",
+  "sunrise", "madhouse", "bandai namco", "tvn asia",
 ];
 
 const TIMEOUT_MS = 10000;
@@ -354,6 +358,70 @@ async function buscarDailymotion(termos, nomes) {
   return [...achados.values()];
 }
 
+const VIMEO_TOKEN = process.env.VIMEO_TOKEN || "";
+const VM_BUSCA = "https://api.vimeo.com/videos";
+
+async function buscarVimeo(termos, nomes) {
+  const achados = new Map();
+  if (!VIMEO_TOKEN) {
+    console.log("ℹ️ VIMEO_TOKEN não configurado: Vimeo ignorado.");
+    return [];
+  }
+
+  await Promise.all(
+    termos.slice(0, 3).map(async (termo) => {
+      try {
+        const u = new URL(VM_BUSCA);
+        u.searchParams.set("query", termo);
+        u.searchParams.set("per_page", "15");
+        u.searchParams.set("filter", "embeddable");
+        u.searchParams.set("filter_embeddable", "true");
+        u.searchParams.set("fields", "uri,name,duration,pictures.sizes,user.name,privacy.embed");
+        const r = await fetch(u, {
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+          headers: {
+            Authorization: `bearer ${VIMEO_TOKEN}`,
+            Accept: "application/vnd.vimeo.*+json;version=3.4",
+            "User-Agent": UA,
+          },
+        });
+        const dados = await r.json();
+        if (dados.error) {
+          console.log("⚠️ Vimeo respondeu com erro:", dados.error);
+          return;
+        }
+
+        for (const v of dados.data || []) {
+          const id = String(v.uri || "").split("/").pop();
+          const titulo = v.name || "";
+          const canal = v.user?.name || "";
+          const minutos = (v.duration || 0) / 60;
+          if (!id || (v.privacy?.embed && v.privacy.embed !== "public")) continue;
+          if (!aceitarVideo(titulo, nomes, minutos)) continue;
+
+          const tamanhos = v.pictures?.sizes || [];
+          const capa = tamanhos.find((t) => t.width >= 640) || tamanhos[tamanhos.length - 1];
+          achados.set(id, {
+            id,
+            titulo,
+            canal,
+            minutos: arredondar(minutos),
+            miniatura: capa?.link || "https://via.placeholder.com/640x360?text=Sem+Capa",
+            pontos: pontuar(titulo, canal, minutos),
+            oficial: ehOficial(canal),
+            plataforma: "vimeo",
+          });
+        }
+      } catch (e) {
+        console.log("⚠️ Falha na conexão com Vimeo:", e);
+      }
+    })
+  );
+
+  console.log(`✅ Vimeo retornou ${achados.size} vídeos.`);
+  return [...achados.values()];
+}
+
 const AR_BUSCA = "https://archive.org/advancedsearch.php";
 
 function minutosArchive(runtime) {
@@ -442,17 +510,20 @@ export default async (req) => {
     videos = await buscarDailymotion(termos, nomes);
   } else if (rota === "/buscar/archive") {
     videos = await buscarArchive(nomes);
+  } else if (rota === "/buscar/vimeo") {
+    videos = await buscarVimeo(termos, nomes);
   } else {
     // Rota unificada caso o app.js antigo seja usado
-    const [yt, dm, ar] = await Promise.all([
-      buscarYoutube(termos, nomes), buscarDailymotion(termos, nomes), buscarArchive(nomes),
+    const [yt, dm, ar, vm] = await Promise.all([
+      buscarYoutube(termos, nomes), buscarDailymotion(termos, nomes),
+      buscarArchive(nomes), buscarVimeo(termos, nomes),
     ]);
-    videos = [...yt, ...dm, ...ar].sort((a, b) => b.pontos - a.pontos);
+    videos = [...yt, ...dm, ...ar, ...vm].sort((a, b) => b.pontos - a.pontos);
   }
 
   return Response.json(videos, { headers: { "Access-Control-Allow-Origin": "*" } });
 };
 
 export const config = {
-  path: ["/buscar", "/buscar/youtube", "/buscar/dailymotion", "/buscar/archive"],
+  path: ["/buscar", "/buscar/youtube", "/buscar/dailymotion", "/buscar/archive", "/buscar/vimeo"],
 };
