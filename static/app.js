@@ -318,8 +318,8 @@ function tocar(v) {
   const progressoSalvo = historico[v.id] ? historico[v.id].tempo : 0;
 
   if (v.plataforma === "dailymotion") {
-    src = `https://www.dailymotion.com/embed/video/${v.id}?autoplay=1`;
-    if (progressoSalvo > 0) src += `&start=${Math.floor(progressoSalvo)}`;
+    src = `https://geo.dailymotion.com/player.html?video=${v.id}`;
+    if (progressoSalvo > 0) src += `&startTime=${Math.floor(progressoSalvo)}`;
   } else {
     src = `https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0&playsinline=1`;
     if (progressoSalvo > 0) src += `&start=${Math.floor(progressoSalvo)}`;
@@ -334,9 +334,7 @@ function tocar(v) {
   iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen; presentation; remote-playback";
   iframe.allowFullscreen = true;
   
-  if (v.plataforma !== "dailymotion") {
-    iframe.referrerPolicy = "strict-origin-when-cross-origin";
-  }
+  iframe.referrerPolicy = "strict-origin-when-cross-origin";
 
   moldura.innerHTML = "";
   moldura.appendChild(iframe);
